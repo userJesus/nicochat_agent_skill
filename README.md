@@ -187,6 +187,20 @@ Em qualquer ambiente, depois de instalada:
 
 ---
 
+## Qual modelo do Claude usar pra rodar a skill
+
+> Não confundir com o modelo da OpenAI que vai dentro do agente no NicoChat (esse a skill recomenda sozinha, normalmente `gpt-4.1-mini` ou `gpt-4.1`). Aqui é sobre qual Claude você usa pra rodar o skill no claude.ai ou no Claude Code.
+
+**Recomendado: Opus** — mais preciso em seguir o ENFORCEMENT PROTOCOL, agrupar funções, respeitar os limites de caracteres de cada campo e fazer a separação correta entre Personalidade e Habilidades. Em testes lado a lado, o Opus foi o que produziu o output mais consistente e enxuto.
+
+**Aceitável: Sonnet** — também passa nos critérios depois das últimas atualizações do skill. Bom pra uso rotineiro quando você não quer gastar Opus.
+
+**Funciona, mas atenção: Haiku** — passa nos critérios, mas tende a deixar mais marcas do processo interno no output (rascunho, "geração interna…"). Útil pra prototipar rápido.
+
+Resumo: **se for criar um agente que vai pra produção e você quer o melhor resultado já no primeiro shot, use Opus**. Pra iteração e rascunho, Sonnet basta.
+
+---
+
 ## Princípios da skill
 
 1. Pergunta antes de gerar. Sem briefing, não há saída.
