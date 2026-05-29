@@ -96,19 +96,66 @@ Reinicie o Claude Code. Confirme digitando `/` no chat — `nicochat-prompt` apa
 
 ## Atualizar quando o repo mudar
 
-**No Claude Code** (qualquer um dos três):
+### Opção A — Auto-update silencioso (recomendado, Claude Code)
+
+Com um hook `SessionStart`, o Claude Code roda `git pull` na pasta da skill toda vez que você abre uma sessão. Se sua working tree estiver suja (edições locais não commitadas), o hook aborta para nunca causar conflito.
+
+**Instalação automática:** cole no Claude Code:
+
+```
+Ativa o auto-update da skill nicochat-prompt: adiciona um hook SessionStart
+no meu ~/.claude/settings.json que chame
+~/.claude/skills/nicochat-prompt/scripts/auto-update.ps1 (Windows) ou
+auto-update.sh (macOS/Linux).
+```
+
+**Instalação manual:** abra `~/.claude/settings.json` e adicione (ou complete) o bloco `"hooks"`:
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"%USERPROFILE%\\.claude\\skills\\nicochat-prompt\\scripts\\auto-update.ps1\""
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Para **macOS / Linux**, troque o `command` por:
+
+```
+"command": "bash $HOME/.claude/skills/nicochat-prompt/scripts/auto-update.sh"
+```
+
+(no Linux/macOS o script já vem executável; se não, rode `chmod +x ~/.claude/skills/nicochat-prompt/scripts/auto-update.sh` uma vez).
+
+Custo: ~200-500ms no início de cada sessão. Silencioso se não houver mudança no GitHub; pull rápido se houver.
+
+### Opção B — Sob demanda
+
+**No Claude Code:**
 
 ```
 atualiza a skill nicochat-prompt
 ```
 
-Ou manual:
+Manual:
 
 ```bash
 cd ~/.claude/skills/nicochat-prompt && git pull
 ```
 
-**No Claude normal:** repita o passo de copiar/colar o `SKILL.md` no Project.
+### No Claude normal (claude.ai)
+
+Sem automação possível — Projects são conteúdo estático. Sempre que o repo mudar, copie de novo o `SKILL.md` no Project knowledge.
 
 ---
 
@@ -140,7 +187,10 @@ Em qualquer ambiente, depois de instalada:
 ```
 nicochat_agent_skill/
 ├── README.md
-└── SKILL.md     # a skill — frontmatter + protocolo completo
+├── SKILL.md                    # a skill — frontmatter + protocolo completo
+└── scripts/
+    ├── auto-update.ps1         # Windows — chamado pelo hook SessionStart
+    └── auto-update.sh          # macOS/Linux — chamado pelo hook SessionStart
 ```
 
 ---
