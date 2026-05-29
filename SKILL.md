@@ -16,6 +16,66 @@ A regra principal: **o agente deve sempre falar com a persona que o usuário def
 - Usuário cola os prints dos formulários "Adicionar agente de IA" ou "Adicionar função de IA" pedindo ajuda para preencher.
 - Usuário diz "preciso de um prompt para [vendedor/atendente/qualificador/etc] no NicoChat".
 
+---
+
+## 🚨 ENFORCEMENT PROTOCOL — leia antes de gerar qualquer coisa
+
+Estas 3 regras são **bloqueadoras**. Se você violar qualquer uma, sua resposta está errada e o usuário precisa pedir de novo.
+
+### Regra 1 — ORDEM DE GERAÇÃO (essa é a defesa principal contra empurrar regras pra Personalidade)
+
+Você vai **gerar internamente** os campos **NESTA ORDEM**, mesmo que apresente no output em outra ordem:
+
+1. Primeiro Habilidades (com O QUE SABE FAZER + REGRAS DE EXECUÇÃO + QUANDO ACIONAR + COMO REAGIR aos retornos).
+2. Depois Restrições (com bloco 1 + bloco 2 + bloco 3).
+3. Depois Informações Sobre Produtos e Serviços.
+4. **Por último**, Personalidade e Objetivo da IA — neste ponto, todas as regras, gatilhos e restrições JÁ TÊM CASA. Sobra só OBJETIVO + PERSONA + TOM + NATURALIDADE + EXEMPLOS DE FALA.
+
+Por que: se você gerar Personalidade primeiro (como o modelo tende a fazer porque é o primeiro campo do form), você "derrama" REGRAS GERAIS e EXECUÇÃO DE FUNCTIONS lá, estoura o limite de 2.000 caracteres e duplica conteúdo. Inverter a ordem força cada coisa pra seu lugar.
+
+### Regra 2 — TABELA "WHAT GOES WHERE" (consulte ANTES de escrever cada linha)
+
+Para cada linha que você for escrever no prompt do agente, classifique o conteúdo e mande pra coluna certa. Se a linha não se encaixa em nenhuma, NÃO a escreva.
+
+| Tipo de linha | Vai para | Exemplo |
+|---|---|---|
+| "Você é X da empresa Y" | Personalidade > OBJETIVO | "Você é Camila, atendente da Clínica X." |
+| "Sua missão é ..." | Personalidade > OBJETIVO | "Sua missão é qualificar lead e agendar." |
+| "Você fala com [persona]" | Personalidade > PERSONA DO USUÁRIO | "Pessoas 25-55 anos com dor odontológica." |
+| "Tom é [formal/informal]" | Personalidade > TOM E ESTILO | "Estilo: Descontraído, leve." |
+| "Nunca use travessão / não diga 'claro!' / emoji até 2" | Personalidade > NATURALIDADE HUMANA | (já dado pela skill) |
+| Frase literal que o agente fala | Personalidade > EXEMPLOS DE FALA | Saudação: "Oi, tudo bem?" |
+| "Habilidade: tirar dúvida sobre X" | **Habilidades** > O QUE SABE FAZER | (lista bulletada) |
+| "Nunca invente preço/prazo/política" | **Habilidades** > REGRAS DE EXECUÇÃO | (operacional, não proibição dura) |
+| "Se ambíguo, faça 1 pergunta antes de agir" | **Habilidades** > REGRAS DE EXECUÇÃO | (operacional) |
+| "**Quando** o usuário X, **execute** ``funcao_Y``" | **Habilidades** > QUANDO ACIONAR | (gatilhos de função) |
+| "Quando ``funcao_X`` retornar `sucesso`, responda com 'frase'" | **Habilidades** > COMO REAGIR AOS RETORNOS | (mapeamento) |
+| "**Não** dar desconto" / "**Não** prometer fluência" | **Restrições** | (proibição dura) |
+| Lista de produtos, horários, FAQ | **Informações Sobre Produtos e Serviços** | (catálogo) |
+
+**Sinais óbvios de classificação errada:**
+- Linha começa com "Quando o usuário ..." em Personalidade → MOVA pra Habilidades.
+- Linha começa com "Quando ``funcao_X`` retornar" em Personalidade → MOVA pra Habilidades.
+- Linha começa com "Nunca invente" / "Não X" em Personalidade ou Habilidades → MOVA pra Restrições.
+- Aparecem palavras `REGRAS GERAIS`, `EXECUÇÃO DE FUNCTIONS`, `REGRAS DE EXECUÇÃO`, `MAPEAMENTO`, `QUANDO ACIONAR` em Personalidade → MOVA o bloco inteiro pra Habilidades.
+
+### Regra 3 — CONTAGEM DE CARACTERES é STOP rígido
+
+Para cada bloco copiável você vai:
+
+1. Escrever o conteúdo.
+2. **Contar os caracteres** (incluindo quebras de linha).
+3. Se passou do limite, **PARE**, refaça mais enxuto, conte de novo, repita até passar.
+4. Só **depois** de estar dentro do limite, devolver o bloco.
+5. Escrever a linha `*X / Y caracteres*` fora do bloco, com a contagem real.
+
+Limites estritos a memorizar:
+- Nome: **50** | Descrição: **1.000** | Personalidade: **2.000** | Habilidades: **20.000** | Produtos: **20.000** | Restrições: **2.000** | Prompt da Função: **2.000** | Descrição do parâmetro: **500**.
+
+Se você está chegando perto do limite na Personalidade (>1.800 caracteres), é sinal quase certo de que você derramou algo que pertence a Habilidades. Volte a aplicar a tabela WHAT GOES WHERE.
+
+---
+
 ## Passo 1 — Briefing (perguntas obrigatórias antes de gerar)
 
 Faça as perguntas abaixo usando `AskUserQuestion` (uma chamada com 3-5 perguntas). NÃO gere nada antes de obter respostas para 1, 2, 3 e 4. Se o usuário já tiver respondido alguma no pedido inicial, pule essa.
@@ -36,6 +96,17 @@ Faça as perguntas abaixo usando `AskUserQuestion` (uma chamada com 3-5 pergunta
 Se o usuário disser que tem produtos/serviços específicos a oferecer, pergunte se quer colar a lista (vai para o campo **Informações Sobre Produtos e Serviços**). Se a lista for dinâmica/atualizável, registre que isso deveria virar **variável de bot** (não embutir no prompt).
 
 ## Passo 2 — Geração dos campos do AGENTE
+
+> ⚠️ Releia agora o **ENFORCEMENT PROTOCOL** no topo da skill (3 regras: ordem de geração, tabela WHAT GOES WHERE, contagem de caracteres). Tudo abaixo presume que você está seguindo essas 3 regras.
+
+**Ordem interna de geração** (mesmo que você apresente no output em outra ordem, gere o conteúdo nesta ordem):
+
+1. **Habilidades** primeiro — todo gatilho de função, toda regra de execução, todo mapeamento de retorno vai aqui antes de qualquer outro campo ser pensado.
+2. **Restrições** segundo — bloco 1 + bloco 2 + bloco 3.
+3. **Informações Sobre Produtos e Serviços** terceiro.
+4. **Personalidade e Objetivo da IA por ÚLTIMO** — neste momento as regras já têm casa em Habilidades, as proibições em Restrições. Sobra só persona/tom/exemplos.
+
+**Ordem de apresentação no output**: pode seguir a ordem do formulário (Nome → Descrição → Personalidade → Habilidades → Produtos → Restrições → Ajustes). A ordem interna é só pra o conteúdo cair no lugar certo.
 
 Devolva em markdown, um bloco por campo, exatamente nos nomes que o formulário usa. Cada bloco deve estar em ` ```text ` para o usuário copiar limpo. Ordem e regras:
 
