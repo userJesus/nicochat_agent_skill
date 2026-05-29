@@ -363,7 +363,22 @@ Número de mensagens antes do resumo automático: (não recomendado pela skill �
 
 ## Passo 3 — Geração de cada FUNÇÃO
 
-Para CADA dado listado pelo usuário na **pergunta 4 do briefing** (e para qualquer outra ação executável como "registrar pedido", "agendar", "encaminhar humano"), gere um bloco de função completo. Use um cabeçalho `## Função: nome_em_ingles` e dentro:
+Para CADA dado listado pelo usuário na **pergunta 4 do briefing**, gere uma função de coleta (`collect_*`).
+
+**Além disso, identifique TODAS as ações executoras finais que o escopo do agente exige** e gere uma função separada para cada uma. Ações executoras NÃO são opcionais — são o motivo do agente existir.
+
+| Escopo típico (da pergunta 1 do briefing) | Função(ões) executora(s) obrigatórias além das de coleta |
+|---|---|
+| Agendar, marcar horário | `schedule_appointment` (ou similar) — função final que grava o agendamento no sistema |
+| Vender, fechar pedido | `register_order` ou `create_order` — registra o pedido |
+| Qualificar lead | `register_lead` ou `qualify_and_handoff` — registra o lead qualificado |
+| Suporte, atendimento | `open_ticket` ou `handoff_to_human` — abre chamado / encaminha |
+| Cadastrar | `register_customer` — efetiva o cadastro no banco |
+| Cobrança | `register_payment_intent` ou similar |
+
+**Regra prática:** se o agente, segundo o escopo, **toma uma ação no mundo** (grava, agenda, registra, encaminha), tem que existir uma função executora final. As funções de coleta só preenchem variáveis; quem efetua a ação é a executora. Sem ela, o agente fica conversando no vazio.
+
+Use um cabeçalho `## Função: nome_em_ingles` para cada função (coleta + executora) e dentro:
 
 ### Nome
 - **Em inglês**, snake_case, verbo + objeto. Ex.: `collect_email`, `register_order`, `schedule_appointment`, `qualify_lead`, `handoff_to_human`.
@@ -462,18 +477,21 @@ Regra: **um ramo no sub-fluxo = um status retornado ao agente = uma condicional 
 Formato recomendado dentro do bloco da função:
 
 ```text
-Fluxo de Trabalho a Acionar: subflow_<nome_funcao>
+Fluxo de Trabalho a Acionar: subflow_NOME_DA_FUNCAO
 Como construir o sub-fluxo:
-  1. Criar sub-fluxo "subflow_<nome_funcao>".
+  1. Criar sub-fluxo "subflow_NOME_DA_FUNCAO".
   2. Adicionar as ações da função (gravar, agendar, validar, etc).
   3. Adicionar o bloco "Resultado da função AI" no final.
-  4. Criar uma saída de status para cada chave do mapeamento de retorno: <sucesso>, <erro_validacao>, ...
+  4. Criar uma saída de status para cada chave do mapeamento de retorno:
+     sucesso, erro_validacao, ...
   5. Os nomes dos status devem bater exatamente com os do prompt da função.
   6. Em CADA ramo (cada saída), ao terminar as ações próprias daquele ramo,
-     devolver o status correspondente para o agente — é o que aciona a
+     devolver o status correspondente para o agente. É o que aciona a
      resposta condicional definida no bloco RETORNOS do prompt da função.
      Sem isso, o agente não recebe o gatilho e improvisa a resposta.
 ```
+
+> ⚠️ Importante: **nunca use `<` e `>` ao redor dos nomes de status** no texto que vai pro bloco copiável. Em markdown isso vira `&lt;sucesso&gt;` e quebra o copy/paste. Liste os status como nomes nus separados por vírgula (`sucesso, erro_validacao, fora_horario`). O mesmo vale para `<nome_funcao>` — use `NOME_DA_FUNCAO` ou substitua direto pelo nome real.
 
 ## Passo 4 — Checklist final (mostre ao usuário antes de encerrar)
 
@@ -484,7 +502,8 @@ Antes de devolver o resultado completo, percorra mentalmente o checklist do cap.
 - [ ] Existe formato obrigatório com exemplo para saídas estruturadas.
 - [ ] Lista de Opções está ligada APENAS em parâmetros de escolha única, com opções numa única linha separadas por vírgula (ou variável de texto cujo valor segue o mesmo formato — nunca múltiplas variáveis nem variável JSON).
 - [ ] Variáveis recomendadas têm o tipo explícito (texto / número / json). JSON aparece apenas para estruturas complexas (cardápio, horários por dia, procedimentos com valor); dados simples ficam em texto/número.
-- [ ] Toda função com mapeamento de retorno traz o roteiro do sub-fluxo: criar `subflow_<nome>`, adicionar o bloco "Resultado da função AI" e configurar uma saída de status por chave do mapeamento, com nomes idênticos aos do prompt.
+- [ ] Toda função com mapeamento de retorno traz o roteiro do sub-fluxo: criar `subflow_NOME_FUNCAO` (sem `<>` ao redor de nome ou status — usar nomes nus), adicionar o bloco "Resultado da função AI" e configurar uma saída de status por chave do mapeamento, com nomes idênticos aos do prompt.
+- [ ] **Função executora final existe.** Se o escopo do agente é "agendar/vender/cadastrar/abrir chamado", existe uma função de ação executora além das de coleta (ex.: `schedule_appointment`, `register_order`, `open_ticket`). Funções de coleta só preenchem variáveis — sem a executora, nada acontece no mundo.
 - [ ] Cada ramo do sub-fluxo termina devolvendo o status correspondente ao agente — sem o retorno final, a condicional do prompt não dispara e o agente improvisa.
 - [ ] Cada bloco ` ```text ` contém APENAS o conteúdo literal a colar no campo do NicoChat. Recomendações, "criar variável X", "lembrar de Y", rótulos tipo `VARIÁVEIS DE BOT RECOMENDADAS` ficam FORA do bloco, em markdown comum. Verifique campo por campo antes de enviar.
 - [ ] **Contagem de caracteres feita em cada bloco** e exibida no formato `*X / Y caracteres*` fora do bloco. Nenhum campo passou do limite (Nome 50, Descrição 1.000, Personalidade 2.000, Habilidades 20.000, Produtos 20.000, Restrições 2.000, Prompt da Função 2.000, Descrição do parâmetro 500).
@@ -501,7 +520,7 @@ Antes de devolver o resultado completo, percorra mentalmente o checklist do cap.
 
 1. **A persona dirige tudo.** Tom, vocabulário, exemplos, gatilhos, restrições — derive da resposta da pergunta 2 do briefing. Se o briefing da persona estiver vago, pare e peça mais detalhe antes de gerar (cap. 9 — antidelírio).
 2. **Nome humano sempre.** Nunca "Agente Vendas IA", sempre "Camila", "Rafael", etc.
-3. **Cada dado a coletar = uma função.** Não tente coletar tudo no prompt do agente. Se o usuário citou 4 dados a coletar, geram-se no mínimo 4 funções.
+3. **Cada dado a coletar = uma função de coleta. Cada ação executora no mundo = uma função executora.** Se o usuário citou 4 dados a coletar e o escopo é "agendar", geram-se no mínimo 4 funções `collect_*` + 1 função executora (ex.: `schedule_appointment`) = **5 funções, não 4**. Falhar em gerar a função executora final é falha grave — o agente fica conversando sem nunca registrar o agendamento.
 4. **Separe QUANDO (agente) de COMO (função).** Não duplique a lógica de coleta dentro do prompt do agente (cap. 3 do ebook).
 5. **Delimitadores corretos**: `"..."` para fala literal, `'...'` para resposta curta exata, ` ``...`` ` para nomes de função/parâmetro/processo lógico.
 6. **Mapeie retornos.** Toda função deve ter pelo menos `sucesso` e `erro_validacao` mapeados para frases curtas (cap. 7).
