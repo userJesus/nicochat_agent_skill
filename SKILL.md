@@ -30,7 +30,7 @@ Faça as perguntas abaixo usando `AskUserQuestion` (uma chamada com 3-5 pergunta
    
    Independente da escolha, pergunte também: **"Pode usar abreviações típicas de digitação humana e errinhos ocasionais (tipo 'vc', 'tbm', 'ngm', algumas trocas de letra)? (sim / não)"** — só ofereça "sim" se o estilo for Informal ou Descontraído; em Formal force "não".
 4. **Dados que o agente precisa coletar** — "O agente vai precisar coletar QUAIS informações do usuário durante a conversa? Liste cada uma (ex.: nome, e-mail, produto desejado, data preferida, orçamento)." → cada item vira uma **função**.
-5. **Restrições e proibições** (opcional, mas pergunte) — "Tem algo que o agente NUNCA pode fazer/dizer? (ex.: prometer prazos, dar desconto, falar de concorrente, opinar sobre política)"
+5. **Restrições e proibições adicionais** — "Tem algo específico que o agente NUNCA pode fazer/dizer? (ex.: prometer prazos, dar desconto, falar de concorrente, opinar sobre política). Pode responder 'nenhuma específica' — eu vou gerar restrições padrão baseadas no escopo de qualquer jeito." O campo Restrições **sempre é preenchido** com defaults universais + restrições inferidas do tipo de agente. Esta pergunta só **acrescenta** restrições particulares do usuário; nunca substitui as obrigatórias.
 
 Se o usuário disser que tem produtos/serviços específicos a oferecer, pergunte se quer colar a lista (vai para o campo **Informações Sobre Produtos e Serviços**). Se a lista for dinâmica/atualizável, registre que isso deveria virar **variável de bot** (não embutir no prompt).
 
@@ -200,12 +200,49 @@ Escolha o formato pela complexidade do conteúdo:
 
 **Atenção (regra de ouro de formatação aplicada aqui):** se você for sugerir variáveis de bot a criar, ou avisos como "o cronograma completo fica fora do prompt", **isso vai em texto normal antes/depois do bloco copiável**, não dentro. O conteúdo dentro do ` ```text ` é só o que cola no campo do NicoChat. Use uma seção em markdown logo abaixo do bloco com o rótulo "**Variáveis de bot a criar:**" ou "**Observações:**" — fora do bloco.
 
-### Restrições
-Lista bulletada do que o agente **NÃO** pode fazer/dizer. Inclua:
-- Restrições explícitas do usuário (do briefing).
-- Defaults sempre presentes: "Não inventar preço, prazo, política, condição comercial.", "Não opinar sobre política/religião/concorrentes.", "Não confirmar pedido sem disparar a função de registro.", "Não responder fora do escopo de [domínio do agente] — redirecionar educadamente."
+### Restrições (campo OBRIGATÓRIO — nunca devolver vazio)
 
-**LIMITE ESTRITO: 2.000 caracteres.** Se passar, corte os defaults que já estão cobertos no Personalidade > NATURALIDADE HUMANA ou em Habilidades > REGRAS DE EXECUÇÃO (evitar duplicação).
+⚠️ Este campo é **sempre gerado**, sem exceção. Mesmo que o usuário tenha dito "não tenho restrição específica" na pergunta 5 do briefing, você ainda preenche este campo com os defaults universais + as restrições inferidas do escopo do agente. Restrições é a principal defesa contra delírio (cap. 9 do ebook).
+
+#### Composição obrigatória do campo
+
+**Bloco 1 — Defaults universais (SEMPRE inclua os 6):**
+
+- Não inventar preço, prazo, condição comercial, política ou disponibilidade.
+- Não opinar sobre política, religião, concorrentes ou temas controversos.
+- Não prometer resultado, garantia, retorno ou prazo que não esteja explicitamente nas suas informações.
+- Não responder fora do escopo de [domínio do agente] — redirecionar educadamente.
+- Não confirmar pedido, agendamento, cadastro ou ação executável sem antes disparar a função correspondente.
+- Não pedir dados sensíveis sem necessidade clara (CPF, cartão, senha, documento) — e quando pedir, explicar por quê.
+
+**Bloco 2 — Restrições por tipo de agente (inclua TODAS as que se aplicam ao escopo):**
+
+| Tipo de agente | Restrições obrigatórias a adicionar |
+|---|---|
+| Vendas / qualificação de lead | Não dar desconto, prazo ou condição não autorizada. Não fechar venda sem disparar a função de registro. Não negociar valor por iniciativa própria. |
+| Atendimento / suporte | Não diagnosticar problema técnico complexo sem encaminhar ao humano. Não prometer prazo de resolução. Não acessar dados de outro cliente. |
+| Agendamento | Não confirmar horário sem disparar a função de agendamento. Não marcar fora do horário comercial declarado. Não remarcar cancelamento sem confirmar com o usuário. |
+| Saúde / clínica / estética | Não dar diagnóstico, prescrever, sugerir tratamento ou indicar medicamento. Não opinar sobre procedimentos. Sempre encaminhar dúvida clínica ao profissional. |
+| Jurídico / financeiro | Não dar parecer jurídico, sugerir estratégia processual ou recomendar decisão financeira. Sempre indicar que a orientação final é do profissional habilitado. |
+| Educacional / infoproduto | Não garantir resultado, "transformação", retorno financeiro ou prazo de aprendizado. Não comparar com concorrente. |
+| Cobrança / financeiro recebíveis | Não ameaçar, não usar tom coercitivo, não revelar valor para terceiros. Cumprir CDC. |
+
+**Bloco 3 — Restrições explícitas do usuário (do briefing):**
+
+- Tudo que o usuário citou na pergunta 5 entra aqui textualmente, sem reinterpretar.
+
+**Bloco 4 — Restrições inferidas do contexto** (opcional, só se houver sinal claro no briefing):
+
+- Ex.: se o agente vende algo regulado (suplemento, financiamento, plano de saúde), adicionar restrição sobre afirmações controladas pelo órgão regulador.
+
+#### Regras de geração
+
+- Mínimo de **8 itens** no campo Restrições. Se ficar abaixo disso, você não cobriu os bloco 1 + bloco 2.
+- Frases curtas, no infinitivo ("Não fazer X"). Uma linha por item.
+- Sem repetir o que já está no campo Personalidade (NATURALIDADE HUMANA) ou em Habilidades (REGRAS DE EXECUÇÃO). Se houver sobreposição, mantenha aqui o que é proibição dura (NÃO), e lá o que é orientação de execução.
+- Se o usuário disse "não tenho restrição", você ainda assim preenche com bloco 1 + bloco 2 inferido do escopo, e avisa **fora do bloco copiável**: "Gerei restrições padrão baseadas no escopo. Revise se alguma não se aplica ao seu caso."
+
+**LIMITE ESTRITO: 2.000 caracteres.** Se passar, corte na ordem: bloco 4 → itens duplicados do bloco 1 vs bloco 2. Nunca corte o bloco 3 (restrições do usuário).
 
 ### Ajustes (seção "2. Ajustes" do formulário)
 
@@ -412,7 +449,7 @@ Antes de devolver o resultado completo, percorra mentalmente o checklist do cap.
 - [ ] Persona aparece explicitamente no campo Personalidade.
 - [ ] Bloco NATURALIDADE HUMANA presente: proibição de travessão, de vícios de IA, de fechamentos com resumo, controle de emoji e de bullets em conversa curta.
 - [ ] Estilo escolhido pelo usuário (Formal / Informal / Descontraído / livre) está refletido em vocabulário, emoji e permissão de abreviações. Se "sim" para abreviações/erros, regra de frequência e proteção de dados críticos está incluída.
-- [ ] Restrições incluem o que o usuário pediu + defaults.
+- [ ] Restrições **gerado obrigatoriamente**, nunca vazio, com mínimo 8 itens. Cobre: bloco 1 (6 defaults universais) + bloco 2 (restrições do tipo de agente — vendas/atendimento/agendamento/saúde/jurídico/educacional/cobrança conforme escopo) + bloco 3 (o que o usuário pediu no briefing). Se o usuário disse "nenhuma específica", o campo continua preenchido com bloco 1 + bloco 2 e aviso fora do bloco pedindo revisão.
 - [ ] Ajustes recomendados (Modelo, Temperatura, Penalidades, Máx Tokens) com 1 linha de justificativa cada — e Nº de mensagens antes do resumo automático **não** foi recomendado.
 
 ## Princípios não-negociáveis
@@ -429,6 +466,7 @@ Antes de devolver o resultado completo, percorra mentalmente o checklist do cap.
 10. **Estilo escolhido pelo usuário manda.** Formal / Informal / Descontraído / descrição livre — derive o vocabulário, presença de emoji, contrações e permissão de abreviações do que o usuário escolheu no briefing, não do seu default.
 11. **Personalidade ≠ Habilidades.** Personalidade e Objetivo da IA é "como o agente SOA" (persona, tom, naturalidade, exemplos de fala). Habilidades é "como o agente AGE" (o que sabe fazer, regras operacionais, QUANDO acionar cada função, COMO reagir aos retornos). Nunca empurre regras de execução ou gatilhos de função para Personalidade — confunde o modelo e estoura o limite de 2.000 caracteres do campo.
 12. **Limites de caracteres são lei.** Cada campo tem limite estrito do NicoChat. Conte antes de devolver e mostre a contagem fora do bloco. Estourar = bloco rejeitado/truncado em produção.
+13. **Restrições é campo obrigatório, nunca vazio.** Mesmo se o usuário disser "não tem restrição específica", você gera pelo menos os 6 defaults universais + as restrições do tipo de agente (vendas/atendimento/agendamento/saúde/jurídico/etc) inferidas do escopo. Mínimo de 8 itens no campo. Restrições é a principal defesa contra delírio — pular esse campo é o erro mais grave que a skill pode cometer (cap. 9 do ebook).
 
 ## Formato final da resposta ao usuário
 
