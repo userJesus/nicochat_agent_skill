@@ -38,15 +38,30 @@ ou função de IA do NicoChat, segue exatamente esse protocolo.
 
 Pronto. Funciona só nessa conversa — em uma nova você precisa repetir.
 
-#### Manual (vale pra sempre, dentro de um Project)
+#### Manual via Project (vale pra sempre, com auto-fetch do GitHub)
 
-1. Acesse https://github.com/userJesus/nicochat_agent_skill/blob/main/SKILL.md
-2. Clique em **Raw** e copie tudo (Ctrl+A, Ctrl+C).
-3. No claude.ai, crie um **Project** chamado "NicoChat — agentes".
-4. Abra **Project knowledge** (ou "Custom instructions", depende da versão).
-5. Cole o conteúdo. Salve.
+Em vez de colar o `SKILL.md` no Project (que vira conteúdo estático), você cola **uma instrução curta** que manda o Claude buscar o arquivo cru do GitHub no início de cada conversa. Resultado: toda conversa nova nesse Project já puxa a versão mais atual do repo, sem você ter que copiar nada de novo.
 
-Agora toda conversa dentro desse Project usa a skill automaticamente. É só dizer "cria um agente de IA pra X" e ela puxa o briefing.
+1. No claude.ai, crie um **Project** chamado "NicoChat — agentes".
+2. Abra **Project instructions** (ou "Custom instructions", depende da versão).
+3. Cole exatamente isto:
+
+```
+No início de toda conversa neste Project, busque o conteúdo de:
+https://raw.githubusercontent.com/userJesus/nicochat_agent_skill/main/SKILL.md
+
+Use esse arquivo como sua skill ativa. Sempre que eu pedir para criar um
+agente ou função de IA do NicoChat, siga exatamente o protocolo descrito
+nele (briefing → geração de campos do formulário → checklist).
+
+Se a busca falhar, avise antes de gerar qualquer coisa.
+```
+
+4. Salve.
+
+Agora é só dizer "cria um agente de IA pra X" em qualquer conversa do Project — ele puxa a versão mais recente do `SKILL.md` direto do GitHub e segue o protocolo.
+
+> **Limitação:** o Claude busca no início de cada conversa. Se você atualizar o repo no meio de uma conversa, essa conversa específica continua com a versão antiga; a próxima já pega a nova.
 
 ---
 
@@ -155,7 +170,9 @@ cd ~/.claude/skills/nicochat-prompt && git pull
 
 ### No Claude normal (claude.ai)
 
-Sem automação possível — Projects são conteúdo estático. Sempre que o repo mudar, copie de novo o `SKILL.md` no Project knowledge.
+Se você seguiu o **Manual via Project (com auto-fetch)** acima, **não precisa fazer nada** — toda conversa nova já busca a versão mais atual do `SKILL.md` no GitHub.
+
+Se você seguiu o caminho de **colar o conteúdo no Project knowledge** (versão estática), aí sim precisa re-colar quando o repo mudar.
 
 ---
 
