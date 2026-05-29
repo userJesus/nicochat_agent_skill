@@ -636,6 +636,85 @@ Como construir o sub-fluxo:
 
 > ⚠️ Importante: **nunca use `<` e `>` ao redor dos nomes de status** no texto que vai pro bloco copiável. Em markdown isso vira `&lt;sucesso&gt;` e quebra o copy/paste. Liste os status como nomes nus separados por vírgula (`sucesso, erro_validacao, fora_horario`). O mesmo vale para `<nome_funcao>` — use `NOME_DA_FUNCAO` ou substitua direto pelo nome real.
 
+## Passo 3.5 — 🛡️ PRE-DELIVERY VERIFICATION CHECKLIST (rode SILENCIOSAMENTE antes de entregar)
+
+Este é um checklist **interno e bloqueador**. Rode-o mentalmente **antes** de escrever a resposta pro usuário. Se qualquer item falhar, **PARE**, refaça o(s) campo(s) afetado(s) e **volte ao topo deste checklist**. Não entregue nada pro usuário enquanto este checklist não estiver 100% verde.
+
+Este checklist é **diferente** do Checklist final do Passo 4 (esse último é exibido no output como entregável). O Pre-Delivery é silencioso (Regra 3 do Enforcement) — você roda ele sem narrar.
+
+### Bloco A — Anti-violação Personalidade × Habilidades
+
+Releia o conteúdo que você gerou pro campo **Personalidade e Objetivo da IA**. Para cada linha, pergunte:
+
+- [ ] A linha começa com **"Quando o usuário"**? → VIOLAÇÃO. Mova pra Habilidades > QUANDO ACIONAR.
+- [ ] A linha começa com **"Quando ``funcao_X`` retornar"**? → VIOLAÇÃO. Mova pra Habilidades > COMO REAGIR.
+- [ ] A linha começa com **"Nunca invente"** ou **"Não X"** (proibição operacional)? → VIOLAÇÃO. Mova pra Habilidades > REGRAS DE EXECUÇÃO ou pra Restrições.
+- [ ] Aparece a palavra **"REGRAS GERAIS"** como cabeçalho no bloco? → VIOLAÇÃO. Remova o cabeçalho e mova as linhas pra Habilidades.
+- [ ] Aparece **"EXECUÇÃO DE FUNCTIONS"** ou **"QUANDO ACIONAR"** como cabeçalho no bloco? → VIOLAÇÃO. Remova e mova pra Habilidades.
+- [ ] Aparece **"MAPEAMENTO DE RETORNOS"**, **"COMO REAGIR"** ou **"RESPOSTA POR STATUS"** como cabeçalho? → VIOLAÇÃO. Mova pra Habilidades > COMO REAGIR.
+- [ ] Aparece **"O QUE VOCÊ SABE FAZER"** como cabeçalho? → VIOLAÇÃO. Mova pra Habilidades.
+- [ ] Os ÚNICOS cabeçalhos no bloco são `OBJETIVO`, `PERSONA DO USUÁRIO`, `TOM E ESTILO`, `NATURALIDADE HUMANA` e `EXEMPLOS DE FALA` — nada além? Se há cabeçalho a mais, → VIOLAÇÃO.
+
+Se qualquer item acima falhou, **reconstrua o campo Personalidade** mantendo só as 5 seções permitidas e mova todo o resto pro destino correto. Depois, conte os caracteres de novo.
+
+### Bloco B — Limites de caracteres (STOP rígido)
+
+Conte os caracteres de cada bloco copiável (incluindo quebras de linha). Aplique a tabela:
+
+| Campo | Limite estrito | Bloco gerado está dentro? |
+|---|---|---|
+| Nome (agente) | **50** | [ ] |
+| Descrição (agente) | **1.000** | [ ] |
+| Personalidade e Objetivo da IA | **2.000** | [ ] |
+| Habilidades | **20.000** | [ ] |
+| Informações Sobre Produtos e Serviços | **20.000** | [ ] |
+| Restrições | **2.000** | [ ] |
+| Nome (função) | **50** | [ ] |
+| Descrição (função) | **1.000** | [ ] |
+| Prompt da Função | **2.000** | [ ] |
+| Descrição do parâmetro | **500** | [ ] |
+
+Para cada linha não marcada, **corte conteúdo** seguindo as regras do campo (não corte regras básicas — corte exemplos/contrações/listas estendidas) e **conte de novo**. Só marque OK quando estiver dentro.
+
+Sinal de diagnóstico: se Personalidade está acima de **1.800 caracteres**, é quase certo que tem entulho de Habilidades. Volte ao Bloco A.
+
+### Bloco C — Agrupamento de funções
+
+- [ ] Total de funções está entre **2 e 5**? Se passou de 5, releia e veja se dá pra agrupar (ex.: `collect_name` + `collect_email` + `collect_phone` viram um `collect_contact_info` único).
+- [ ] Cada função tem **mais de 1 parâmetro** (ou justifica claramente ter 1 só)? Função com 1 parâmetro só geralmente é sinal de fragmentação errada.
+- [ ] Existe **pelo menos 1 função executora final** (`register_*`, `schedule_*`, `handoff_*`, `create_*`) além das de coleta?
+
+### Bloco D — Restrições
+
+- [ ] Campo Restrições foi gerado (NÃO está vazio)?
+- [ ] Tem no mínimo **8 itens**?
+- [ ] Cobre bloco 1 (6 defaults universais) + pelo menos 2 itens do bloco 2 (do tipo do agente)?
+- [ ] Restrições explícitas do briefing do usuário estão incluídas textualmente?
+
+### Bloco E — Sub-fluxos e retorno
+
+- [ ] Toda função com mapeamento de retorno tem roteiro do sub-fluxo descrito?
+- [ ] Os roteiros usam **nomes nus** dos status (`sucesso, erro_validacao`), SEM `<>` ao redor?
+- [ ] Cada roteiro inclui a instrução "em CADA ramo, devolver o status correspondente"?
+
+### Bloco F — Formatação
+
+- [ ] Cada bloco ` ```text ` contém **APENAS** conteúdo literal a colar no NicoChat?
+- [ ] Recomendações de variáveis, "criar X", "lembrar de Y" e rótulos tipo `VARIÁVEIS DE BOT RECOMENDADAS` estão **FORA** dos blocos copiáveis, em markdown comum?
+- [ ] Logo abaixo de cada bloco há a linha `*X / Y caracteres*` fora do bloco?
+
+### Bloco G — Silêncio do processo (Regra 3)
+
+- [ ] Você está prestes a entregar o resultado **sem** narrar "Vou gerar internamente na ordem...", "Geração interna...", "Auto-check Personalidade...", "Aplicando WHAT GOES WHERE..."?
+- [ ] O output começa diretamente em `# Agente: {{Nome}}` (ou na confirmação curta do briefing se ainda há perguntas)?
+
+### Resultado do Pre-Delivery
+
+- ✅ **Todos os 7 blocos verdes** → pode entregar.
+- ❌ **Qualquer item vermelho** → refaça o campo afetado, volte ao topo deste checklist. Não entregue.
+
+---
+
 ## Passo 4 — Checklist final (mostre ao usuário antes de encerrar)
 
 Antes de devolver o resultado completo, percorra mentalmente o checklist do cap. 10 do ebook e marque OK/AJUSTAR para cada item. Mostre o checklist no fim da resposta:
