@@ -363,9 +363,66 @@ Número de mensagens antes do resumo automático: (não recomendado pela skill �
 
 ## Passo 3 — Geração de cada FUNÇÃO
 
-Para CADA dado listado pelo usuário na **pergunta 4 do briefing**, gere uma função de coleta (`collect_*`).
+### 🎯 Princípio central: 1 função = 1 ETAPA da conversa, NÃO 1 dado coletado
 
-**Além disso, identifique TODAS as ações executoras finais que o escopo do agente exige** e gere uma função separada para cada uma. Ações executoras NÃO são opcionais — são o motivo do agente existir.
+Cada função do NicoChat aceita **N parâmetros**. Isso significa que você deve **agrupar dados relacionados na mesma função**, em vez de criar uma função por dado. Gerar `collect_name`, `collect_email`, `collect_phone` como 3 funções separadas é **erro de design** — o correto é uma única `collect_contact_info` com 3 parâmetros (`name`, `email`, `phone`).
+
+#### Como agrupar dados em funções
+
+Use estes critérios. Dados que satisfaçam o **mesmo** critério vão juntos na **mesma** função:
+
+1. **Mesma etapa do funil/conversa** — dados que sempre são pedidos no mesmo momento. Ex.: nome + telefone (contato inicial), data + horário (slot de agendamento), produto + tamanho + cor (item do pedido).
+2. **Mesma intenção** — dados que respondem à mesma pergunta de negócio. Ex.: orçamento + tipo de imóvel + quartos + bairros + prazo (qualificação imobiliária).
+3. **Mesma ação** — dados que vão para o mesmo registro final. Ex.: CPF + nome confirmado (identificação do devedor); produto + tamanho + cor + CEP (registro do pedido).
+4. **Mesma fonte de validação** — dados que dependem do mesmo backend ou regra. Ex.: CEP + endereço completo (mesma consulta de CEP).
+
+#### Quando SEPARAR em funções diferentes
+
+Crie funções distintas quando houver mudança em **qualquer um** destes:
+
+- **Ação diferente:** coletar é diferente de registrar, diferente de agendar, diferente de encaminhar.
+- **Momento muito diferente da conversa:** dado pedido na saudação inicial vs dado pedido só após confirmação de interesse.
+- **Validação muito mais cara/complexa:** ex.: CPF precisa consultar base de cadastro, e isso pode falhar — separar de uma coleta simples.
+- **Dependência condicional forte:** ex.: `plano_saude` só vale se `tipo_atendimento == plano` — pode ficar como param opcional na mesma função, mas se a lógica do sub-fluxo for muito diferente, separar.
+
+#### Exemplos práticos (refazendo agentes que estavam errados)
+
+**Antes (errado — 5 funções para barbearia):**
+- `collect_customer_name`, `collect_service_type`, `collect_appointment_date`, `collect_appointment_time`, `collect_phone` + `schedule_appointment`
+
+**Depois (certo — 3 funções para barbearia):**
+- `collect_contact_info` (parâmetros: `name`, `phone`)
+- `collect_appointment_slot` (parâmetros: `service`, `date`, `time`)
+- `schedule_appointment` (executora final)
+
+**Antes (errado — 6 funções para clínica odontológica):**
+- `collect_full_name`, `collect_phone`, `collect_urgency`, `collect_payment_type`, `collect_treatment_interest` + `schedule_initial_evaluation`
+
+**Depois (certo — 3 funções para clínica):**
+- `collect_patient_contact` (parâmetros: `full_name`, `phone`)
+- `collect_qualification` (parâmetros: `urgency_level`, `payment_type`, `health_plan_name` opcional, `is_first_visit`, `treatment_interest`)
+- `schedule_initial_evaluation` (executora final)
+
+**Antes (errado — 9 funções para imobiliária):**
+- 7 collect_* separadas + 2 executoras
+
+**Depois (certo — 4 funções para imobiliária):**
+- `collect_lead_contact` (parâmetros: `name`, `phone`)
+- `collect_lead_preferences` (parâmetros: `budget_range`, `property_type`, `bedrooms`, `neighborhoods`, `timeframe`)
+- `handoff_to_broker` (executora condicional — leads quentes)
+- `enroll_in_nurture_funnel` (executora condicional — leads frios)
+
+#### Regra de quantidade
+
+Para a maioria dos agentes, o número total de funções fica entre **2 e 5**:
+- 1-3 funções de coleta (agrupando dados por etapa/intenção)
+- 1-2 funções executoras (ação final no mundo)
+
+Se você gerou **mais de 5 funções**, releia e tente agrupar. Se gerou **menos de 2**, está faltando coleta ou executora.
+
+### Identifique as ações executoras finais
+
+**Além das funções de coleta, identifique TODAS as ações executoras finais que o escopo do agente exige** e gere uma função separada para cada uma. Ações executoras NÃO são opcionais — são o motivo do agente existir.
 
 | Escopo típico (da pergunta 1 do briefing) | Função(ões) executora(s) obrigatórias além das de coleta |
 |---|---|
@@ -381,7 +438,7 @@ Para CADA dado listado pelo usuário na **pergunta 4 do briefing**, gere uma fun
 Use um cabeçalho `## Função: nome_em_ingles` para cada função (coleta + executora) e dentro:
 
 ### Nome
-- **Em inglês**, snake_case, verbo + objeto. Ex.: `collect_email`, `register_order`, `schedule_appointment`, `qualify_lead`, `handoff_to_human`.
+- **Em inglês**, snake_case, verbo + objeto agrupador. Ex.: `collect_contact_info`, `collect_appointment_slot`, `collect_lead_preferences`, `register_order`, `schedule_appointment`, `handoff_to_human`. Evite nomes que se referem a 1 só dado (`collect_email`, `collect_name`) — agrupe na mesma função.
 - **LIMITE ESTRITO: 50 caracteres.**
 
 ### Descrição
@@ -504,6 +561,7 @@ Antes de devolver o resultado completo, percorra mentalmente o checklist do cap.
 - [ ] Variáveis recomendadas têm o tipo explícito (texto / número / json). JSON aparece apenas para estruturas complexas (cardápio, horários por dia, procedimentos com valor); dados simples ficam em texto/número.
 - [ ] Toda função com mapeamento de retorno traz o roteiro do sub-fluxo: criar `subflow_NOME_FUNCAO` (sem `<>` ao redor de nome ou status — usar nomes nus), adicionar o bloco "Resultado da função AI" e configurar uma saída de status por chave do mapeamento, com nomes idênticos aos do prompt.
 - [ ] **Função executora final existe.** Se o escopo do agente é "agendar/vender/cadastrar/abrir chamado", existe uma função de ação executora além das de coleta (ex.: `schedule_appointment`, `register_order`, `open_ticket`). Funções de coleta só preenchem variáveis — sem a executora, nada acontece no mundo.
+- [ ] **Agrupamento correto de funções (NUNCA 1 função por dado).** Funções de coleta agrupam dados da mesma etapa/intenção/ação como parâmetros da mesma função. Ex.: `collect_contact_info(name, phone)` em vez de `collect_name` + `collect_phone`. Total de funções fica entre **2 e 5** na maioria dos agentes (1-3 coleta agrupada + 1-2 executoras). Se gerou mais de 5, releia e agrupe.
 - [ ] Cada ramo do sub-fluxo termina devolvendo o status correspondente ao agente — sem o retorno final, a condicional do prompt não dispara e o agente improvisa.
 - [ ] Cada bloco ` ```text ` contém APENAS o conteúdo literal a colar no campo do NicoChat. Recomendações, "criar variável X", "lembrar de Y", rótulos tipo `VARIÁVEIS DE BOT RECOMENDADAS` ficam FORA do bloco, em markdown comum. Verifique campo por campo antes de enviar.
 - [ ] **Contagem de caracteres feita em cada bloco** e exibida no formato `*X / Y caracteres*` fora do bloco. Nenhum campo passou do limite (Nome 50, Descrição 1.000, Personalidade 2.000, Habilidades 20.000, Produtos 20.000, Restrições 2.000, Prompt da Função 2.000, Descrição do parâmetro 500).
@@ -520,7 +578,8 @@ Antes de devolver o resultado completo, percorra mentalmente o checklist do cap.
 
 1. **A persona dirige tudo.** Tom, vocabulário, exemplos, gatilhos, restrições — derive da resposta da pergunta 2 do briefing. Se o briefing da persona estiver vago, pare e peça mais detalhe antes de gerar (cap. 9 — antidelírio).
 2. **Nome humano sempre.** Nunca "Agente Vendas IA", sempre "Camila", "Rafael", etc.
-3. **Cada dado a coletar = uma função de coleta. Cada ação executora no mundo = uma função executora.** Se o usuário citou 4 dados a coletar e o escopo é "agendar", geram-se no mínimo 4 funções `collect_*` + 1 função executora (ex.: `schedule_appointment`) = **5 funções, não 4**. Falhar em gerar a função executora final é falha grave — o agente fica conversando sem nunca registrar o agendamento.
+3. **1 função = 1 ETAPA da conversa, NÃO 1 dado.** Função do NicoChat aceita N parâmetros, então dados que pertencem à mesma etapa/intenção/ação vão JUNTOS como parâmetros da mesma função. Errado: `collect_name`, `collect_email`, `collect_phone` (3 funções). Certo: `collect_contact_info` (1 função, 3 parâmetros). Total típico fica entre **2 e 5 funções** por agente: 1-3 de coleta agrupada + 1-2 executoras finais. Se passou de 5, releia e agrupe. Se ficou abaixo de 2, está faltando executora.
+4. **Cada ação executora no mundo = uma função executora.** Se o escopo é "agendar", existe `schedule_*`. Se é "vender/registrar", existe `register_*` ou `create_*`. Se é "encaminhar", existe `handoff_*`. As funções de coleta só preenchem variáveis; quem efetua ação é a executora. Falhar em gerar a executora final = agente conversa sem nunca executar.
 4. **Separe QUANDO (agente) de COMO (função).** Não duplique a lógica de coleta dentro do prompt do agente (cap. 3 do ebook).
 5. **Delimitadores corretos**: `"..."` para fala literal, `'...'` para resposta curta exata, ` ``...`` ` para nomes de função/parâmetro/processo lógico.
 6. **Mapeie retornos.** Toda função deve ter pelo menos `sucesso` e `erro_validacao` mapeados para frases curtas (cap. 7).
@@ -628,11 +687,11 @@ Número de mensagens antes do resumo automático: (não recomendado pela skill)
 
 # Funções
 
-## Função: collect_email
+## Função: collect_contact_info
 
 ### Campo: Nome
 ```text
-collect_email
+collect_contact_info
 ```
 
 ### Campo: Descrição
